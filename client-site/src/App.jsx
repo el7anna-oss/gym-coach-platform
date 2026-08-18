@@ -3,7 +3,8 @@ import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-route
 import { client } from './sanityClient';
 import { API_URL } from '../config/api';
 
-const BACKEND_URL = 'http://localhost:5001';
+//const BACKEND_URL = 'http://localhost:5001';
+const BACKEND_URL = 'https://your-backend-service.onrender.com';
 
 // Fixed, light, and sleek Header/Navbar Component across all pages with Cart Toggle
 const Navbar = ({ cartCount, onOpenCart, onOpenAuth, currentUser, onLogout }) => {
