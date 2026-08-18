@@ -1,0 +1,13 @@
+{
+  "name": "my-coach-gym-root",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "client": "npm --prefix client-site run dev",
+    "studio": "cd studio && sanity start",
+    "start-all": "concurrently \"npm run client\" \"npm run studio\""
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}
