@@ -1,34 +1,27 @@
-# Global Node modules and logs
+﻿# Dependencies
+node_modules/
 **/node_modules/
+
+# Build outputs
+dist/
+build/
 **/dist/
-**/dist-ssr/
 **/build/
-**/logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-# Environment & Local Configuration
-**/.env
-**/*.local
+# Environment & Local files
+.env
+*.local
 
-# Prisma Generated Files
+# Prisma & Sanity generated files
 **/generated/prisma/
-
-# Sanity Studio Temporary files
 **/.sanity/
 
-# Editor & OS files
-.vscode/*
-!.vscode/extensions.json
-.idea/
+# Logs
+*.log
+npm-debug.log*
+
+# OS & Editor files
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-*.pem
+.vscode/
+.idea/
 *.tsbuildinfo
