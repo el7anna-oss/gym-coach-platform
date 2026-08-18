@@ -15,6 +15,7 @@ const prisma = new PrismaClient({ adapter });
 
 const app = express();
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
@@ -44,6 +45,7 @@ app.post('/api/auth/register', async (req, res) => {
 // Login Route (With JWT Token Generation)
 app.post('/api/auth/login', async (req, res) => {
   try {
+    console.log("Login payload received:", req.body.email);
     const { email, password } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
     
@@ -96,8 +98,6 @@ app.post('/api/orders', async (req, res) => {
         totalPrice: parseFloat(totalPrice),
         items: {
           create: items.map(item => {
-            console.log("Incoming cart item object:", JSON.stringify(item));
-
             const rawTitle = item.title || item.name || item.product?.title || item.productName || "";
             const titleText = rawTitle.trim().toLowerCase();
 
