@@ -15,8 +15,19 @@ const prisma = new PrismaClient({ adapter });
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// Middleware with CORS configuration allowing your Vercel app
+app.use(cors({
+  origin: [
+    "https://gym-coach-platform-chi.vercel.app", 
+    "https://gym-coach-platform.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Register Route
