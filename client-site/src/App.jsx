@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { client } from './sanityClient';
+import { API_URL } from '../config/api';
 
 const BACKEND_URL = 'http://localhost:5001';
 
@@ -606,7 +607,6 @@ export default function App() {
     }
   }, []);
 
-  // FIXED: Immutably mapping and updating the quantity to prevent double-incrementing issues
   const handleAddToCart = (item) => {
     setCart(prevCart => {
       const existingIndex = prevCart.findIndex(cartItem => cartItem._id === item._id);
@@ -669,7 +669,7 @@ export default function App() {
         throw new Error(data.error || 'Failed to place order');
       }
 
-      setOrderStatus({ success: true, message: '✓ Order was created successfully and saved to PostgreSQL!' });
+      setOrderStatus({ success: true, message: '✓ Order was created successfully' });
       setCart([]);
       
       setTimeout(() => {
