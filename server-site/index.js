@@ -8,21 +8,30 @@ const { PrismaClient } = require('@prisma/client');
 
 dotenv.config();
 
-// Setup PostgreSQL pool and Prisma adapter for Prisma v7
+// Setup PostgreSQL pool and Prisma adapter
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 const app = express();
 
-// Middleware with CORS configuration allowing your Vercel app
+// Dynamic CORS configuration allowing all Vercel previews & your production URLs
+const allowedOrigins = [
+  'https://gym-coach-platform-chi.vercel.app',
+  'https://gym-coach-platform.vercel.app',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: [
-    "https://gym-coach-platform-chi.vercel.app", 
-    "https://gym-coach-platform.vercel.app",
-    "http://localhost:5173",
-    "http://localhost:3000"
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like Postman, mobile apps, or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
