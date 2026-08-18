@@ -15,8 +15,9 @@ const prisma = new PrismaClient({ adapter });
 
 const app = express();
 
-// Dynamic CORS configuration allowing all Vercel previews & your production URLs
+// Dynamic CORS configuration including your exact live Vercel URL
 const allowedOrigins = [
+  'https://gym-coach-platform-13ez9v6tp-ritness-team.vercel.app',
   'https://gym-coach-platform-chi.vercel.app',
   'https://gym-coach-platform.vercel.app',
   process.env.CLIENT_URL
