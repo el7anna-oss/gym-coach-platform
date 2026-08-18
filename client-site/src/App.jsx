@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { client } from './sanityClient';
-import { API_URL } from "./config/api.js";
-
-//const BACKEND_URL = 'http://localhost:5001';
-const BACKEND_URL = 'https://your-backend-service.onrender.com';
+import { API_URL } from "../config/api"; // Make sure relative path is correct for your file location
 
 // Fixed, light, and sleek Header/Navbar Component across all pages with Cart Toggle
 const Navbar = ({ cartCount, onOpenCart, onOpenAuth, currentUser, onLogout }) => {
@@ -168,7 +165,7 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
       : { email, password };
 
     try {
-      const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+      const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -183,7 +180,7 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
       let tokenValue = data.token;
 
       if (isRegistering) {
-        const loginRes = await fetch(`${BACKEND_URL}/api/auth/login`, {
+        const loginRes = await fetch(`${API_URL}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
@@ -653,7 +650,7 @@ export default function App() {
     const totalPrice = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/orders`, {
+      const response = await fetch(`${API_URL}/api/orders`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
