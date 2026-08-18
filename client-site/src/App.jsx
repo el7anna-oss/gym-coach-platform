@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { client } from './sanityClient';
-import { API_URL } from './config/api';
+import { API_URL } from "./config/api";
 
 //const BACKEND_URL = 'http://localhost:5001';
 const BACKEND_URL = 'https://your-backend-service.onrender.com';
