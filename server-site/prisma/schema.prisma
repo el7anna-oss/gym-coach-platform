@@ -23,8 +23,14 @@ model Order {
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   items      OrderItem[]
   totalPrice Float
-  status     String      @default("PENDING")
+  status     String      @default("PENDING") // "PENDING", "COMPLETED", etc.
+  notes      String?     // Optional field for admin notes or descriptions
   createdAt  DateTime    @default(now())
+
+  // --- SCALING & PERFORMANCE INDEXES ---
+  @@index([status])    // Speeds up filtering orders by status
+  @@index([createdAt]) // Speeds up sorting orders by date
+  @@index([userId])    // Speeds up finding all orders for a specific user
 }
 
 model OrderItem {
