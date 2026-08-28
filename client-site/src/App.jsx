@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { client } from './sanityClient';
 import { API_URL } from "./config/api"; 
+import { Mic, MicOff, VolumeX } from 'lucide-react';
 
 const Navbar = ({ cartCount, onOpenCart, onOpenAuth, currentUser, onLogout }) => {
   const navigate = useNavigate();
@@ -15,8 +16,8 @@ const Navbar = ({ cartCount, onOpenCart, onOpenAuth, currentUser, onLogout }) =>
       <nav className="hidden md:flex items-center space-x-8 text-sm font-semibold tracking-wide">
         <button onClick={() => navigate('/')} className="hover:text-red-500 transition">HOME</button>
         <button onClick={() => navigate('/shop')} className="hover:text-red-500 transition">SHOP</button>
-        <button onClick={() => navigate('/book-session')} className="hover:text-red-500 transition">BOOK SESSION</button>
-        <button onClick={() => navigate('/room')} className="hover:text-red-500 transition">ROOM & NUTRITION</button>
+        <button onClick={() => navigate('/book-session')} className="hover:text-red-500 transition">TRAINING</button>
+        <button onClick={() => navigate('/room')} className="hover:text-red-500 transition text-red-500">NUTRITION ROOM</button>
       </nav>
 
       <div className="flex items-center space-x-3 sm:space-x-5">
@@ -203,173 +204,170 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
   );
 };
 
-// --- UNIFIED VOICE CONCIERGE COMPONENT ---
-const VoiceConciergeSection = ({ onAddToCart }) => {
-  const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState('');
-  const [aiMatch, setAiMatch] = useState(null);
+// --- DEDICATED NUTRITION ROOM WITH VOICE & CHAT AI COACH ---
+const Room = ({ onOpenAuth, cartCount, onOpenCart, currentUser, onLogout }) => {
+  const [messages, setMessages] = useState([
+    { 
+      role: 'assistant', 
+      content: 'Welcome to the Nutrition Room! I am your AI Sports Nutritionist. Speak or type your metrics (Gender, Weight, Height, and Goal) to get your plan.' 
+    }
+  ]);
+  const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const messagesEndRef = useRef(null);
 
-  const speakResponse = (textToSpeak) => {
-    if ('speechSynthesis' in window) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+
+  if (recognition) {
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+  }
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
+
+  const speakText = (text) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      window.speechSynthesis.speak(utterance);
+      setIsSpeaking(false);
     }
   };
 
-  const startListening = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Speech recognition is not supported in this browser. Use Chrome.");
+  const toggleListen = () => {
+    if (!recognition) {
+      alert("Speech recognition is not supported in this browser. Please use Chrome or Edge.");
       return;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.interimResults = true; // Enabled interim results so it captures as you speak
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-      setIsListening(true);
-      setAiMatch(null);
-      setTranscript('');
-    };
-
-    recognition.onresult = (event) => {
-      let interimTranscript = '';
-      let finalTranscript = '';
-
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        } else {
-          interimTranscript += event.results[i][0].transcript;
-        }
-      }
-
-      const currentText = finalTranscript || interimTranscript;
-      setTranscript(currentText);
-
-      if (finalTranscript) {
-        processVoiceCommand(finalTranscript);
-      }
-    };
-
-    recognition.onerror = (event) => {
-      console.warn("Speech recognition error:", event.error);
+    if (isListening) {
+      recognition.stop();
       setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    try {
+    } else {
       recognition.start();
-    } catch (e) {
-      console.error(e);
-      setIsListening(false);
+      setIsListening(true);
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(transcript);
+        setIsListening(false);
+        handleSendMessage(null, transcript);
+      };
+
+      recognition.onerror = () => setIsListening(false);
+      recognition.onend = () => setIsListening(false);
     }
   };
 
-  const processVoiceCommand = async (text) => {
-    if (!text.trim()) return;
+  const handleSendMessage = async (e, voicePrompt) => {
+    if (e) e.preventDefault();
+    const promptText = voicePrompt || input;
+    if (!promptText.trim()) return;
+
+    const userMessage = { role: 'user', content: promptText };
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+    setInput('');
     setLoading(true);
+
     try {
-      const response = await fetch(`${API_URL}/api/voice-concierge`, {
+      const response = await fetch(`${API_URL}/api/ai-nutrition`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: text })
+        body: JSON.stringify({ prompt: promptText, history: updatedMessages })
       });
       const data = await response.json();
-      if (data.success && data.matchedItem) {
-        setAiMatch(data.matchedItem);
 
-        let categoryName = "Shop Gear";
-        if (data.matchedItem.itemType === 'bundle') {
-          categoryName = "Training Bundle";
-        } else if (text.toLowerCase().includes('nutrition') || text.toLowerCase().includes('room')) {
-          categoryName = "Nutrition Room";
-        }
-
-        const spokenMessage = `I found a matching result in ${categoryName}: ${data.matchedItem.title}.`;
-        speakResponse(spokenMessage);
+      if (data.success) {
+        setMessages([...updatedMessages, { role: 'assistant', content: data.reply }]);
+        speakText(data.reply);
+      } else {
+        throw new Error(data.error || 'Failed to fetch AI response');
       }
     } catch (err) {
-      console.error("Voice concierge error:", err);
+      console.error("AI Nutrition Error:", err);
+      setMessages([...updatedMessages, { role: 'assistant', content: 'Sorry, I encountered an error connecting to the AI Nutritionist. Please try again.' }]);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto my-8 p-6 bg-neutral-900/90 backdrop-blur-md border border-red-600/40 rounded-2xl shadow-2xl text-center relative">
-      <h3 className="text-xl font-black text-white mb-2">🎙️ AI VOICE <span className="text-red-600">CONCIERGE</span></h3>
-      <p className="text-neutral-300 text-xs mb-4">
-        Tell the coach what you need (e.g., <i>"I need a fat-burning supplement from the shop"</i>, <i>"Give me a boxing training bundle"</i>, or <i>"Open the nutrition room"</i>).
-      </p>
-      
-      <button 
-        onClick={startListening}
-        disabled={isListening}
-        className={`px-8 py-3.5 rounded-full font-bold text-white transition shadow-lg transform active:scale-95 ${
-          isListening ? 'bg-amber-600 animate-pulse' : 'bg-red-600 hover:bg-red-700'
-        }`}
-      >
-        {isListening ? '🎙️ Listening... (Speak now)' : '🎤 Speak to Coach'}
-      </button>
-
-      {transcript && (
-        <div className="mt-4 inline-block px-4 py-2 bg-neutral-800/80 border border-neutral-700 rounded-xl">
-          <p className="text-xs text-neutral-300 italic">"{transcript}"</p>
+    <div className="min-h-screen bg-neutral-950 text-white pt-24 px-6 pb-12 flex flex-col">
+      <Navbar cartCount={cartCount} onOpenCart={onOpenCart} onOpenAuth={onOpenAuth} currentUser={currentUser} onLogout={onLogout} />
+      <div className="max-w-4xl mx-auto w-full flex-1 flex flex-col">
+        <div className="mb-4 text-center">
+          <h2 className="text-3xl font-black mb-1">NUTRITION <span className="text-red-600">ROOM</span></h2>
+          <p className="text-xs text-neutral-400">Interactive Live Voice & Chat AI Nutrition Coach</p>
         </div>
-      )}
 
-      {loading && (
-        <p className="mt-4 text-xs text-red-500 animate-pulse">
-          🤖 AI Coach is matching your request across Shop, Bundles, and Nutrition Rooms...
-        </p>
-      )}
-
-      {aiMatch && (
-        <div className="mt-6 p-4 bg-neutral-950 border border-red-600/60 rounded-xl text-left flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl animate-fadeIn">
-          <div className="flex items-center space-x-3">
-            {aiMatch.imageUrl ? (
-              <img src={aiMatch.imageUrl} alt={aiMatch.title} className="w-16 h-16 object-cover rounded-lg border border-neutral-700" />
-            ) : (
-              <div className="w-16 h-16 bg-neutral-800 rounded-lg flex items-center justify-center text-[10px] text-neutral-400">AI Match</div>
+        {/* Chat Window with Voice Controls */}
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 sm:p-6 flex-1 flex flex-col justify-between shadow-2xl h-[550px]">
+          <div className="flex justify-between items-center pb-3 border-b border-neutral-800 mb-4">
+            <span className="text-xs text-neutral-400 uppercase font-bold tracking-wider">Coach Status: Active</span>
+            {isSpeaking && (
+              <button onClick={stopSpeaking} className="flex items-center gap-1 text-xs bg-red-600 px-3 py-1 rounded-full animate-pulse text-white">
+                <VolumeX size={14} /> Stop Voice
+              </button>
             )}
-            <div>
-              <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded text-white ${
-                aiMatch.itemType === 'bundle' ? 'bg-amber-600' : 'bg-red-600'
-              }`}>
-                Matched: {aiMatch.itemType === 'bundle' ? 'Training Bundle' : 'Shop Gear'}
-              </span>
-              <h4 className="font-bold text-white text-sm mt-1">{aiMatch.title}</h4>
-              <p className="text-xs text-neutral-400 line-clamp-1">{aiMatch.description}</p>
-            </div>
           </div>
 
-          {aiMatch.price ? (
-            <button 
-              onClick={() => onAddToCart(aiMatch)} 
-              className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg shrink-0 transition shadow-md"
+          <div className="overflow-y-auto space-y-4 pr-2 flex-1">
+            {messages.map((msg, idx) => (
+              <div key={idx} className={`p-4 rounded-xl max-w-[85%] text-sm ${msg.role === 'user' ? 'bg-red-600 ml-auto text-white' : 'bg-neutral-800 text-neutral-200 border border-neutral-700/60'}`}>
+                <p className="whitespace-pre-line leading-relaxed">{msg.content}</p>
+              </div>
+            ))}
+            {loading && (
+              <div className="p-4 rounded-xl max-w-[85%] bg-neutral-800 text-neutral-400 border border-neutral-700/60 animate-pulse text-sm">
+                🤖 AI Nutritionist is computing macros and drafting your plan...
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <form onSubmit={(e) => handleSendMessage(e, null)} className="mt-4 flex items-center gap-2 pt-4 border-t border-neutral-800">
+            <button
+              type="button"
+              onClick={toggleListen}
+              className={`p-3 rounded-xl transition ${isListening ? 'bg-red-500 text-white animate-bounce' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 border border-neutral-700'}`}
+              title="Voice Input"
             >
-              Add (${aiMatch.price})
+              {isListening ? <MicOff size={20} /> : <Mic size={20} />}
             </button>
-          ) : (
-            <a 
-              href="/room" 
-              className="px-5 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-bold rounded-lg shrink-0 transition border border-neutral-600"
-            >
-              Open Room
-            </a>
-          )}
+
+            <input 
+              type="text" 
+              value={input} 
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={isListening ? "Listening... Speak now" : "Type your message or use voice..."}
+              className="flex-1 bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-600"
+            />
+
+            <button type="submit" disabled={loading || !input.trim()} className="bg-red-600 hover:bg-red-700 disabled:bg-neutral-800 px-6 py-3 rounded-xl font-bold text-sm text-white transition shadow-lg">
+              Send
+            </button>
+          </form>
         </div>
-      )}
+      </div>
     </div>
   );
 };
@@ -385,19 +383,23 @@ const DashboardNavigation = ({ onOpenAuth, cartCount, onOpenCart, currentUser, o
       <Navbar cartCount={cartCount} onOpenCart={onOpenCart} onOpenAuth={onOpenAuth} currentUser={currentUser} onLogout={onLogout} />
 
       <main className="relative z-10 flex flex-col items-center justify-center my-auto px-4 text-center w-full max-w-4xl mx-auto py-10">
-        <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white mb-2">
+        <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white mb-3">
           UNLEASH YOUR <span className="text-red-600">POTENTIAL</span>
         </h1>
-        <p className="text-neutral-300 text-xs sm:text-sm font-medium mb-4 max-w-xl">
-          Unified coaching ecosystem for gear, bundles, and nutrition rooms.
+        <p className="text-neutral-300 text-xs sm:text-sm font-medium mb-8 max-w-xl">
+          Elite coaching ecosystem. Start your training regimens or explore customized AI nutrition rooms.
         </p>
 
-        <VoiceConciergeSection onAddToCart={onAddToCart} />
-
-        <div className="flex flex-wrap items-center justify-center gap-4 w-full max-w-md mt-4">
-          <button onClick={() => navigate('/shop')} className="py-2.5 px-6 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs tracking-wider transition">Shop Gear</button>
-          <button onClick={() => navigate('/book-session')} className="py-2.5 px-6 bg-neutral-900/80 hover:bg-neutral-800 text-white font-bold rounded-lg border border-neutral-700 text-xs tracking-wider transition">Training Bundles</button>
-          <button onClick={() => navigate('/room')} className="py-2.5 px-6 bg-neutral-900/80 hover:bg-neutral-800 text-white font-bold rounded-lg border border-neutral-700 text-xs tracking-wider transition">Nutrition Room</button>
+        <div className="flex flex-wrap items-center justify-center gap-4 w-full max-w-lg">
+          <button onClick={() => navigate('/book-session')} className="py-3.5 px-8 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-sm tracking-wider transition shadow-lg">
+            Start Training
+          </button>
+          <button onClick={() => navigate('/shop')} className="py-3.5 px-8 bg-neutral-900/90 hover:bg-neutral-800 text-white font-bold rounded-xl border border-neutral-700 text-sm tracking-wider transition shadow-lg">
+            View Shop
+          </button>
+          <button onClick={() => navigate('/room')} className="py-3.5 px-8 bg-neutral-900/90 hover:bg-neutral-800 text-white font-bold rounded-xl border border-neutral-700 text-sm tracking-wider transition shadow-lg">
+            Nutrition Room
+          </button>
         </div>
       </main>
 
@@ -478,26 +480,6 @@ const BookSession = ({ onOpenAuth, onAddToCart, cartCount, onOpenCart, currentUs
               </div>
             </div>
           ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const Room = ({ onOpenAuth, cartCount, onOpenCart, currentUser, onLogout }) => {
-  return (
-    <div className="min-h-screen bg-neutral-950 text-white pt-24 px-6 pb-12">
-      <Navbar cartCount={cartCount} onOpenCart={onOpenCart} onOpenAuth={onOpenAuth} currentUser={currentUser} onLogout={onLogout} />
-      <div className="max-w-6xl mx-auto">
-        <h2 className="text-3xl font-black mb-6">NUTRITION & VIRTUAL <span className="text-red-600">ROOMS</span></h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 flex flex-col justify-between shadow-lg">
-            <div>
-              <h3 className="font-bold text-lg mb-2 text-white">Nutrition Strategy Room</h3>
-              <p className="text-xs text-neutral-400 mb-4">Live Q&A and diet macros roadmap for fighters and lifters.</p>
-            </div>
-            <button className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition">Enter Room</button>
-          </div>
         </div>
       </div>
     </div>

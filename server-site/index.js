@@ -6,15 +6,18 @@ const { Pool } = require('pg');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { PrismaClient } = require('@prisma/client');
 const { createClient } = require('@sanity/client');
+const OpenAI = require('openai');
 
 dotenv.config();
 
-// Setup PostgreSQL pool and Prisma adapter
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-// Setup Sanity client
 const sanityClient = createClient({
   projectId: process.env.SANITY_PROJECT_ID,
   dataset: process.env.SANITY_DATASET,
@@ -80,59 +83,41 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Voice Concierge Route (Free Keyword-Based Matching - No OpenAI Required)
-app.post('/api/voice-concierge', async (req, res) => {
+// Dedicated AI Nutrition Room Route (OpenAI-Powered Conversational Nutritionist)
+app.post('/api/ai-nutrition', async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, history } = req.body;
     if (!prompt) return res.status(400).json({ success: false, error: 'Prompt is required' });
 
-    const userText = prompt.toLowerCase();
+    const systemInstruction = {
+      role: "system",
+      content: `You are an elite sports nutritionist and AI fitness consultant inside the "Nutrition Room". 
+      Your task is to converse with the client, extract their key metrics (Gender, Weight, Height, and Goal), and provide a fully customized nutrition recommendation. 
+      When you have enough details from the conversation, structure your final output clearly with:
+      - Daily Caloric Target
+      - Macronutrient Breakdown (Protein, Carbs, Fats in grams)
+      - Recommended Meal Timing & Dietary Strategy`
+    };
 
-    // Fetch products and bundles from Sanity
-    const products = await sanityClient.fetch(`*[_type == "product"] { _id, "title": name, price, description, "imageUrl": image.asset->url }`);
-    const bundles = await sanityClient.fetch(`*[_type == "bundle"] { _id, title, price, description, "imageUrl": image.asset->url }`);
-    
-    const catalog = [
-      ...products.map(p => ({ ...p, itemType: 'product' })),
-      ...bundles.map(b => ({ ...b, itemType: 'bundle' }))
+    const formattedMessages = [
+      systemInstruction,
+      ...(history || []).map(m => ({ role: m.role, content: m.content })),
+      { role: "user", content: prompt }
     ];
 
-    if (catalog.length === 0) {
-      return res.json({ success: true, matchedItem: null });
-    }
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: formattedMessages,
+      temperature: 0.7,
+    });
 
-    // Smart keyword matching algorithm
-    let matchedItem = null;
-    let highestScore = 0;
+    res.json({
+      success: true,
+      reply: completion.choices[0].message.content
+    });
 
-    for (const item of catalog) {
-      let score = 0;
-      const itemTitle = (item.title || "").toLowerCase();
-      const itemDesc = (item.description || "").toLowerCase();
-
-      // Check if words from the user prompt match the item title or description
-      const promptWords = userText.split(' ');
-      for (const word of promptWords) {
-        if (word.length > 2) { // Ignore tiny words like "a", "to", "in"
-          if (itemTitle.includes(word)) score += 3;
-          if (itemDesc.includes(word)) score += 1;
-        }
-      }
-
-      if (score > highestScore) {
-        highestScore = score;
-        matchedItem = item;
-      }
-    }
-
-    // Fallback: If no strong keyword match is found, default to the first item in the catalog
-    if (!matchedItem && catalog.length > 0) {
-      matchedItem = catalog[0];
-    }
-
-    res.json({ success: true, matchedItem });
   } catch (err) {
-    console.error("Voice Concierge Error:", err);
+    console.error("AI Nutrition Error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
