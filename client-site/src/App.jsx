@@ -173,6 +173,15 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
       <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md p-6 text-white shadow-2xl relative">
         <button onClick={onClose} className="absolute top-4 right-4 text-neutral-400 hover:text-white font-bold">✕</button>
         <h3 className="text-xl font-black mb-1 text-center">{isRegistering ? 'CREATE AN ACCOUNT' : 'WELCOME BACK'}</h3>
+        <div className="flex justify-center mb-4">
+          <button 
+            type="button" 
+            onClick={() => setIsRegistering(!isRegistering)} 
+            className="text-xs text-red-500 hover:underline font-semibold"
+          >
+            {isRegistering ? 'Already have an account? Log In' : "Don't have an account? Register"}
+          </button>
+        </div>
         {errorMsg && <div className="mb-4 p-3 bg-red-600/20 border border-red-600 rounded-lg text-xs text-red-400 text-center">{errorMsg}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -204,7 +213,6 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
   );
 };
 
-// --- DEDICATED NUTRITION ROOM WITH VOICE & CHAT AI COACH ---
 const Room = ({ onOpenAuth, cartCount, onOpenCart, currentUser, onLogout }) => {
   const [messages, setMessages] = useState([
     { 
@@ -319,7 +327,6 @@ const Room = ({ onOpenAuth, cartCount, onOpenCart, currentUser, onLogout }) => {
           <p className="text-xs text-neutral-400">Interactive Live Voice & Chat AI Nutrition Coach</p>
         </div>
 
-        {/* Chat Window with Voice Controls */}
         <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 sm:p-6 flex-1 flex flex-col justify-between shadow-2xl h-[550px]">
           <div className="flex justify-between items-center pb-3 border-b border-neutral-800 mb-4">
             <span className="text-xs text-neutral-400 uppercase font-bold tracking-wider">Coach Status: Active</span>
@@ -372,7 +379,7 @@ const Room = ({ onOpenAuth, cartCount, onOpenCart, currentUser, onLogout }) => {
   );
 };
 
-const DashboardNavigation = ({ onOpenAuth, cartCount, onOpenCart, currentUser, onLogout, onAddToCart }) => {
+const DashboardNavigation = ({ onOpenAuth, cartCount, onOpenCart, currentUser, onLogout }) => {
   const navigate = useNavigate();
 
   return (
@@ -387,7 +394,7 @@ const DashboardNavigation = ({ onOpenAuth, cartCount, onOpenCart, currentUser, o
           UNLEASH YOUR <span className="text-red-600">POTENTIAL</span>
         </h1>
         <p className="text-neutral-300 text-xs sm:text-sm font-medium mb-8 max-w-xl">
-          Elite coaching ecosystem. Start your training regimens or explore customized AI nutrition rooms.
+            Coaching ecosystem. Start your training regimens or explore customized AI nutrition rooms.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-4 w-full max-w-lg">
@@ -550,7 +557,7 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<DashboardNavigation onOpenAuth={() => setIsAuthOpen(true)} cartCount={totalCartCount} onOpenCart={() => setIsCartOpen(true)} currentUser={currentUser} onLogout={handleLogout} onAddToCart={handleAddToCart} />} />
+        <Route path="/" element={<DashboardNavigation onOpenAuth={() => setIsAuthOpen(true)} cartCount={totalCartCount} onOpenCart={() => setIsCartOpen(true)} currentUser={currentUser} onLogout={handleLogout} />} />
         <Route path="/shop" element={<Shop onOpenAuth={() => setIsAuthOpen(true)} onAddToCart={handleAddToCart} cartCount={totalCartCount} onOpenCart={() => setIsCartOpen(true)} currentUser={currentUser} onLogout={handleLogout} />} />
         <Route path="/book-session" element={<BookSession onOpenAuth={() => setIsAuthOpen(true)} onAddToCart={handleAddToCart} cartCount={totalCartCount} onOpenCart={() => setIsCartOpen(true)} currentUser={currentUser} onLogout={handleLogout} />} />
         <Route path="/room" element={<Room onOpenAuth={() => setIsAuthOpen(true)} cartCount={totalCartCount} onOpenCart={() => setIsCartOpen(true)} currentUser={currentUser} onLogout={handleLogout} />} />
